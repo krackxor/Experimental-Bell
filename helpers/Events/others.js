@@ -19,7 +19,7 @@ export default async function on({ cht, Exp, store, ev, is }) {
                 externalAdReply: {
                     title: cht.pushName,
                     body: "Nama saya Heru AI di ciptakan oleh Khoirul Anwar",
-                    thumbnail: fs.readFileSync(fol[3] + "bell.jpg"),
+                    thumbnail: fs.readFileSync(fol[3] + "images.jpeg"),
                     sourceUrl: "https://khoirul.pro/",
                     mediaUrl: "http://ẉa.me/62895410369812/"+Math.floor(Math.random() * 100000000000000000),
                     renderLargerThumbnail: true,
