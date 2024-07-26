@@ -18,10 +18,10 @@ export default async function on({ cht, Exp, store, ev, is }) {
             contextInfo: { 
                 externalAdReply: {
                     title: cht.pushName,
-                    body: "Artificial Intelligence, The beginning of the robot era",
+                    body: "Nama saya Heru AI di ciptakan oleh Khoirul Anwar",
                     thumbnail: fs.readFileSync(fol[3] + "bell.jpg"),
-                    sourceUrl: "https://github.com/Rifza123",
-                    mediaUrl: "http://ẉa.me/6283110928302/"+Math.floor(Math.random() * 100000000000000000),
+                    sourceUrl: "https://khoirul.pro/",
+                    mediaUrl: "http://ẉa.me/62895410369812/"+Math.floor(Math.random() * 100000000000000000),
                     renderLargerThumbnail: true,
                     showAdAttribution: true,
                     mediaType: 1,
