@@ -105,36 +105,52 @@ class EventEmitter {
 
     async emit(event) {
         try {
+            !isLoad && await this.loadEventHandlers()
             const eventFile = Data.events[event]?.eventFile;
             if (!eventFile) return;
-
+            
             await this.loadEventHandler(eventFile);
             const ev = Data.events[event];
             if (!ev) return;
-
+            let urls = (this.is.quoted?.url || this.is.url)?.length < 1 ? null : (this.is.quoted?.url || this.is.url)
+            let args = this.cht?.q
+            let cht = this.cht
             let media = null;
 
             if (this.cht.memories.energy < 1 && ev.energy) {
                 return this.cht.reply(`Males😞\n⚡️Energy: ${this.cht.memories.energy}`);
             }
 
-            if (ev.args && !this.cht.q) {
-                return this.cht.reply(ev.args);
-            }
-
+            if (ev.args && !this.cht.q) return this.cht.reply(ev.args);
+            
             if (ev.media) {
                 const { type, msg, etc } = ev.media;
                 let mediaType = this.getMediaType();
                 if (!type.includes(mediaType)) {
-                    return this.cht.reply(msg);
+                    return this.cht.reply(msg || `Reply atau kirim ${type.join("/")} dengan caption: ${cht.msg}!`);
                 }
 
                 if (mediaType === "audio") {
-                    if (!(this.is.image || this.is.quoted?.audio)) {
-                        return this.cht.reply(msg);
-                    }
                     if (etc && this.is.quoted?.audio?.seconds > etc.seconds) {
-                        return this.cht.reply(etc.msg);
+                        return this.cht.reply(`Audio tidak boleh lebih dari ${etc.seconds}detik`);
+                    }
+                }
+                
+                if (mediaType === "video") {
+                    if (etc && this.is.quoted?.video?.seconds > etc.seconds) {
+                        return this.cht.reply(`Video tidak boleh lebih dari ${etc.seconds}detik`);
+                    }
+                }
+                
+                if (mediaType === "sticker") {
+                    if (etc && etc.isNoAnimated && this.is.quoted?.sticker?.isAnimated) {
+                        return this.cht.reply("Sticker harus tipe Image!");
+                    }
+                    if (etc && etc.isAnimated && !this.is.quoted?.sticker?.isAnimated) {
+                        return this.cht.reply("Sticker harus tipe Video!");
+                    }
+                    if (etc && etc.isAvatar && !this.is.quoted?.sticker?.isAvatar) {
+                        return this.cht.reply("Sticker harus tipe Avatar!");
                     }
                 }
 
@@ -144,18 +160,29 @@ class EventEmitter {
                     ? await this.Exp.func.downloadSave(save, mediaType)
                     : await download();
             }
+            
+            if (ev.urls) {
+               if(!urls) return this.cht.reply(ev.urls.msg);
+               if(ev.urls.formats){
+                   let isFormatsUrl = urls.some(url => 
+                       ev.urls.formats.some(keyword => url.toLowerCase().includes(keyword.toLowerCase()))
+                   )
+                   if(!isFormatsUrl) return this.cht.reply(`Url yang diberikan harus berupa url seperti:\n- ${ev.urls.formats.join("\n- ")}`)
+               }
+            }
 
             if (ev.energy) {
                 await ArchiveMemories.reduceEnergy(this.cht.sender, ev.energy);
                 await this.cht.reply(`-${ev.energy} Energy⚡`);
             }
-
-            ev.resolve({ media });
+            
+            const resolves = { media, urls, args, cht }
+            await ev.resolve(resolves);
             await func.addCmd();
             await func.addCMDForTop(event);
             return
         } catch (error) {
-            return console.error(`${bgcolor("[ERROR]","red")} ${timestamp()}\n- Error emitting "${events}"`, error.stack);
+            return console.error(`${bgcolor("[ERROR]","red")} ${timestamp()}\n- Error emitting "${event}"`, error.stack);
         }
     }
 }

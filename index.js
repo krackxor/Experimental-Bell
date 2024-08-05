@@ -19,14 +19,12 @@ const chalk = "chalk".import()
 const baileys = "baileys".import()
 const pino = "pino".import()
 let { Boom } = "boom".import();
+const NodeCache = "nodecache".import()
 
 /*!-======[ Functions Imports ]======-!*/
 Data.helper = (await "./helpers/client.js".r()).default
+Data.utils = (await "./helpers/utils.js".r()).default
 Data.In = (await "./helpers/interactive.js".r()).default
-const { EventEmitter } = await "./toolkit/events.js".r();
-const { ArchiveMemories } = await "./toolkit/usr.js".r();
-const { ai } = await "./machine/reasoner.js".r();
-const { func } = await "./toolkit/func.js".r();
 let { Connecting } = await "./connection/systemConnext.js".r()
 
 let {
@@ -34,7 +32,6 @@ let {
     useMultiFileAuthState,
   	DisconnectReason,
   	getContentType,
-  	fetchLatestBaileysVersion,
   	makeInMemoryStore
 } = baileys;
 
@@ -63,8 +60,6 @@ async function launch() {
   	}
   	
   	let { state, saveCreds } = await useMultiFileAuthState(session);
-    
-    let { version } = fetchLatestBaileysVersion();
         const Exp = makeWASocket({
             logger: pino({ level: 'silent' }),
             printQRInTerminal: !global.pairingCode,
@@ -72,11 +67,6 @@ async function launch() {
             auth: state
         });
         
-        Exp.func = func
-        const exps = {
-           Exp, store, In: Data.In, ai, ArchiveMemories, EventEmitter, getContentType,
-           is: {}
-        };
          if (global.pairingCode && !Exp.authState.creds.registered) {
             const phoneNumber = await question(chalk.yellow('Please type your WhatsApp number : '));
             let code = await Exp.requestPairingCode(phoneNumber.replace(/[+ -]/g, ""));
@@ -84,7 +74,7 @@ async function launch() {
             );
           }        
         Exp.ev.on('connection.update', async (update) => {
-            Connecting({ update, Exp, Boom, DisconnectReason, sleep, launch });
+            await Connecting({ update, Exp, Boom, DisconnectReason, sleep, launch });
         });
 
         Exp.ev.on('creds.update', saveCreds);
@@ -92,15 +82,23 @@ async function launch() {
         Exp.ev.on('messages.upsert', async ({
   			messages
   		}) => {
-  			const cht = messages[0];
-  			      cht.id = cht.key.remoteJid
+  			const mess = messages[0]
+            const cht = {
+                ...mess,
+                id: mess.key.remoteJid
+            }
   			if (!cht.message) return;
   			if (cht.key.remoteJid === 'status@broadcast' && cfg.autoreadsw == true) {
-  				Exp.readMessages([cht.key]);
+  				await Exp.readMessages([cht.key]);
   				let typ = getContentType(cht.message);
   				console.log((/protocolMessage/i.test(typ)) ? `${cht.key.participant.split('@')[0]} Deleted story❗` : 'View user stories : ' + cht.key.participant.split('@')[0]);
+  				return
   			}
-             Data.helper({ cht, ...exps });
+  			 if (cht.key.remoteJid !== 'status@broadcast'){
+  			     const exs = { cht, Exp, is: {}, store }
+  			     await Data.utils(exs)
+                 await Data.helper(exs);
+             }
 	});
 	store.bind(Exp.ev);
 }
