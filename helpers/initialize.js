@@ -1,4 +1,11 @@
-import jimp from 'jimp';
+// File: Experimental-Bell-master/helpers/initialize.js (Kode Setelah Perbaikan Jimp)
+
+// --- FIX START ---
+// Menggunakan dynamic import dan fallback untuk kompatibilitas CJS/ESM di Node 20
+const JimpModule = await import('jimp'); 
+const jimp = JimpModule.default || JimpModule; 
+// --- FIX END ---
+
 const {
   getBinaryNodeChild,
   generateMessageIDV2,
