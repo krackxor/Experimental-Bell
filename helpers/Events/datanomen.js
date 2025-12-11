@@ -6,8 +6,6 @@
  * 1. Manajemen data dinamis: Upload, Hapus, dan Daftar file Excel/CSV.
  * 2. Pencarian data nomen umum (Dinamis).
  * 3. Pencarian data 'Belum Bayar' (Spesifik).
- * * PRASYARAT: 
- * - npm install xlsx
  * =========================================================
  */
 
@@ -32,12 +30,10 @@ if (!fs.existsSync(DATA_FOLDER)) {
 
 /**
  * Mendapatkan daftar file data yang valid (.xlsx atau .csv) di folder data.
- * @returns {string[]} Daftar nama file.
  */
 const getAvailableFiles = () => {
     try {
         const files = fs.readdirSync(DATA_FOLDER);
-        // Hanya ambil file yang berekstensi XLSX atau CSV
         return files.filter(file => file.endsWith('.xlsx') || file.endsWith('.csv'));
     } catch (e) {
         return [];
@@ -51,13 +47,12 @@ ev.on(
   {
     cmd: ['uploadnomen', 'savenomen'],
     listmenu: ['Upload Data Nomen (XLSX/CSV)'],
-    tag: 'owner', // Hanya untuk Owner/Admin
+    tag: 'owner', 
     energy: 10,
     media: {
       type: ['document'],
       msg: 'Kirim/reply dokumen Excel (.xlsx) atau CSV (.csv) dengan caption *.uploadnomen*',
       etc: {
-          // Hanya izinkan file .xlsx atau .csv
           name: /(.xlsx|.csv)$/, 
           msg: 'File harus berformat Excel (.xlsx) atau CSV (.csv)!'
       }
@@ -75,19 +70,15 @@ ev.on(
         // Logika Konversi: Jika file adalah CSV, konversi ke buffer XLSX
         if (ext === '.csv') {
             await cht.reply('⏳ Terdeteksi file CSV. Sedang mengkonversi data ke format XLSX...');
-            
             const workbook = xlsx.read(media, { type: 'buffer', raw: true });
-            
-            // Tulis ulang sebagai XLSX Buffer
             fileToSave = xlsx.write(workbook, {
                 type: 'buffer',
                 bookType: 'xlsx'
             });
-
             await cht.reply('✅ Konversi CSV ke XLSX berhasil.');
         }
 
-        // Simpan file baru (menimpa file dengan nama yang sama)
+        // Simpan file baru
         fs.writeFileSync(targetPath, fileToSave); 
         
         return cht.reply(`✅ File data nomen *${uploadedFilename}* telah berhasil diunggah dan disimpan!\n\nAnda dapat mencari file ini dengan:\n*.nomen ${uploadedFilename} [kata kunci]*`);
@@ -161,6 +152,7 @@ ev.on({
 // =========================================================
 // --- 7. COMMAND: PENCARIAN SPESIFIK (.belumbayar)
 // --- Mencari file: belumbayar.xlsx - Sheet1.csv
+// --- OUTPUT: Menampilkan SEMUA KOLOM (FIELD)
 // =========================================================
 ev.on(
   {
@@ -193,7 +185,7 @@ ev.on(
       const query = args?.trim() || '';
 
       if (query) {
-        // Mode 1: Pencarian spesifik
+        // Mode 1: Pencarian spesifik di semua kolom
         foundData = data.filter(item => 
             Object.values(item).some(val => 
                 String(val).toLowerCase().includes(query.toLowerCase())
@@ -217,16 +209,17 @@ ev.on(
           return cht.reply(notFoundMsg);
       }
 
-      // Format Data untuk Balasan (Hanya kolom-kolom penting)
+      // Format Data untuk Balasan (Semua Kolom Ditampilkan)
       const dataToSend = foundData.slice(0, MAX_ROWS);
 
       dataToSend.forEach((row, index) => {
           responseText += `*--- Data #${index + 1} ---\n`;
-          responseText += `*NOMEN:* ${row.NOMEN || '-'}\n`;
-          responseText += `*NAMA:* ${row.NAMA_PEL || '-'}\n`;
-          responseText += `*ALAMAT:* ${row.ALM1_PEL || '-'}\n`;
-          responseText += `*NOMINAL:* ${row.NOMINAL || '-'}\n`;
-          responseText += `*KETERANGAN:* ${row.KET || '-'}\n`;
+          // LOOPING UNTUK MENAMPILKAN SEMUA FIELD
+          for (const key in row) {
+              if (key && row[key] !== undefined && row[key] !== null) {
+                  responseText += `*${key}:* ${row[key]}\n`;
+              }
+          }
           responseText += '\n';
       });
       
@@ -257,7 +250,6 @@ ev.on(
   },
   async ({ cht, args }) => {
     const parts = args?.split(/\s+/);
-    // Memastikan ada nama file dan kata kunci
     if (parts?.length < 2) return cht.reply(ev.data.args);
     
     const filename = parts[0].trim();
@@ -285,7 +277,6 @@ ev.on(
 
       let responseText = `*Hasil Pencarian di ${filename} untuk: ${query}*\n\n`;
 
-      // Pencarian di semua kolom
       const foundData = data.filter(item => 
           Object.values(item).some(val => 
               String(val).toLowerCase().includes(query.toLowerCase())
