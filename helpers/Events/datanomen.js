@@ -5,7 +5,7 @@
  * * FUNGSI UTAMA: 
  * 1. Manajemen data dinamis: Upload, Hapus, dan Daftar file Excel/CSV.
  * 2. Pencarian data nomen umum (Dinamis).
- * 3. Pencarian data 'Belum Bayar' (Spesifik).
+ * 3. Pencarian data 'Belum Bayar' (Spesifik), mendukung pencarian by NOMEN.
  * =========================================================
  */
 
@@ -151,8 +151,7 @@ ev.on({
 
 // =========================================================
 // --- 7. COMMAND: PENCARIAN SPESIFIK (.belumbayar)
-// --- Mencari file: belumbayar.xlsx - Sheet1.csv
-// --- OUTPUT: Menampilkan SEMUA KOLOM (FIELD)
+// --- MENGGUNAKAN SEMUA KOLOM DALAM OUTPUT.
 // =========================================================
 ev.on(
   {
@@ -160,11 +159,10 @@ ev.on(
     listmenu: ['Cari Data Belum Bayar'], 
     tag: 'tools',             
     energy: 5,                
-    args: 'Masukkan kata kunci (Nomen, Nama, Petugas) atau biarkan kosong untuk melihat data yang belum lunas. Contoh: belumbayar 60139500', 
+    args: 'Masukkan kata kunci (atau NOMEN, gunakan "nomen [nomor]"). Biarkan kosong untuk melihat data yang belum lunas. Contoh: belumbayar nomen 60139500', 
   },
   async ({ cht, args }) => {
     
-    // Pastikan file spesifik ada
     if (!fs.existsSync(BELUM_BAYAR_PATH)) {
       return cht.reply(`❌ File data Belum Bayar (*${BELUM_BAYAR_FILENAME}*) tidak ditemukan.\nSilakan unggah file ini menggunakan *.uploadnomen* terlebih dahulu.`);
     }
@@ -182,20 +180,37 @@ ev.on(
 
       let responseText;
       let foundData = data;
-      const query = args?.trim() || '';
+      let query = args?.trim() || '';
+      let searchBy = 'default';
 
+      // --- LOGIKA PARSING ARGUMEN KHUSUS NOMEN ---
+      if (query.toLowerCase().startsWith('nomen ')) {
+          query = query.substring(6).trim(); // Ambil string setelah "nomen "
+          searchBy = 'NOMEN';
+      }
+      // --- END LOGIKA PARSING ARGUMEN ---
+      
       if (query) {
-        // Mode 1: Pencarian spesifik di semua kolom
-        foundData = data.filter(item => 
-            Object.values(item).some(val => 
-                String(val).toLowerCase().includes(query.toLowerCase())
-            )
-        );
-        responseText = `*Hasil Pencarian di ${BELUM_BAYAR_FILENAME} untuk: ${query}*\n\n`;
+        if (searchBy === 'NOMEN') {
+            // Mode 1A: Pencarian spesifik di kolom NOMEN
+            foundData = data.filter(item => 
+                // Mencari NOMEN yang cocok
+                item.NOMEN && String(item.NOMEN).includes(query)
+            );
+            responseText = `*Hasil Pencarian berdasarkan NOMEN: ${query}*\n\n`;
+
+        } else {
+            // Mode 1B: Pencarian umum di semua kolom (jika tidak diawali "nomen")
+            foundData = data.filter(item => 
+                Object.values(item).some(val => 
+                    String(val).toLowerCase().includes(query.toLowerCase())
+                )
+            );
+            responseText = `*Hasil Pencarian di ${BELUM_BAYAR_FILENAME} untuk: ${query}*\n\n`;
+        }
       } else {
-         // Mode 2: Filter 'Belum Bayar'
+         // Mode 2: Filter 'Belum Bayar' (tanpa argumen)
          foundData = data.filter(item => {
-             // Asumsi kolom KET ada dan nilainya tidak mengandung "sudah di bayar"
              return item.KET && !String(item.KET).toLowerCase().includes('sudah di bayar');
          });
          responseText = `*Data Pelanggan Belum Bayar (KET ≠ "sudah di bayar")*\n\n`;
@@ -214,7 +229,7 @@ ev.on(
 
       dataToSend.forEach((row, index) => {
           responseText += `*--- Data #${index + 1} ---\n`;
-          // LOOPING UNTUK MENAMPILKAN SEMUA FIELD
+          // LOOPING UNTUK MENAMPILkan SEMUA FIELD
           for (const key in row) {
               if (key && row[key] !== undefined && row[key] !== null) {
                   responseText += `*${key}:* ${row[key]}\n`;
@@ -238,7 +253,7 @@ ev.on(
 
 
 // =========================================================
-// --- 8. COMMAND: PENCARIAN DINAMIS (.nomen)
+// --- 8. COMMAND: PENCARIAN DINAMIS (.nomen) - TIDAK BERUBAH
 // =========================================================
 ev.on(
   {
@@ -287,7 +302,6 @@ ev.on(
           return cht.reply(`Tidak ditemukan data nomen yang cocok dengan pencarian: *${query}* di file *${filename}*`);
       }
 
-      // Format Data untuk Balasan (semua kolom)
       const dataToSend = foundData.slice(0, MAX_ROWS);
 
       dataToSend.forEach((row, index) => {
